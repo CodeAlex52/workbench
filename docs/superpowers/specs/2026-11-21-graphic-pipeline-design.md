@@ -10,7 +10,7 @@
 
 现在发一篇内容，实际动作是：写一篇 md → 手改成小红书的标题和正文 → 生成封面 → 调 `localhost:18060` 发出去 → 再手动把同一篇放进博客、再手动往公众号后台粘一遍。
 
-小红书这段已经跑通了（`blog/cosmos/src/content/posts/victorio.md` → `~/tmp/xhs-vittorioo/payload.json` → `POST /api/v1/publish` → `{"success":true,"status":"发布完成"}`）。剩下的问题不是"能不能发"，是**每篇都要重复一遍这一串动作，而且三端的状态散在三个地方**。
+小红书这段已经跑通了（`blog/cosmos/src/content/posts/victorio.md` → `$TMPDIR/xhs-vittorioo/payload.json` → `POST /api/v1/publish` → `{"success":true,"status":"发布完成"}`）。剩下的问题不是"能不能发"，是**每篇都要重复一遍这一串动作，而且三端的状态散在三个地方**。
 
 这个工作台要解决的就是这一件事：一篇稿子进来，三端的产出、发布、状态都在一个地方，并且每一步在终端里都能复现。
 

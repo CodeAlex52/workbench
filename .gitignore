@@ -1,5 +1,10 @@
 node_modules/
-.wechat-profile/
 output/
-.DS_Store
+.wechat-profile/
 *.local.json
+.DS_Store
+
+# 本机实例：自己的内容与账号配置不进仓库
+workbench.config.json
+content/*
+!content/example/

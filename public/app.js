@@ -37,9 +37,17 @@ async function loadState() {
 }
 
 function renderList() {
+  const src = $('#source')
+  if (src && state) {
+    src.textContent = state.mode === 'vault' ? 'obsidian' : 'content/'
+    src.title = state.source || ''
+  }
   const list = $('#list')
   if (!state?.contents?.length) {
-    list.innerHTML = '<div class="meta-line" style="padding:10px 12px">content/ 下还没有内容</div>'
+    const hint = state?.mode === 'vault'
+      ? 'vault 里还没有带 workbench: true 的笔记'
+      : 'content/ 下还没有内容'
+    list.innerHTML = `<div class="meta-line" style="padding:10px 12px">${hint}</div>`
     return
   }
   list.innerHTML = state.contents

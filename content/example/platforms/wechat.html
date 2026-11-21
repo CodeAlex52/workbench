@@ -1,0 +1,14 @@
+<p style="margin:0 0 20px;"><img src="~/Desktop/vibecoding/workbench/content/example/assets/cover.png" style="width:100%;display:block;border-radius:6px;"></p>
+<h2 style="font-size:18px;font-weight:600;margin:30px 0 14px;padding-left:10px;border-left:3px solid #333;line-height:1.5;">这份文件是三端共用的源</h2>
+<p style="margin:0 0 16px;line-height:1.75;font-size:16px;color:#333;">工作台不存内容，内容就是你磁盘上的 Markdown。它只负责把同一份稿子翻译成三种形态：</p>
+<p style="margin:0 0 16px;line-height:1.75;font-size:16px;color:#333;">• 博客要的是带 frontmatter 的 md</p>
+<p style="margin:0 0 16px;line-height:1.75;font-size:16px;color:#333;">• 小红书要的是 20 字以内标题 + 1000 字以内纯文本 + 话题</p>
+<p style="margin:0 0 16px;line-height:1.75;font-size:16px;color:#333;">• 公众号要的是能过编辑器校验的内联样式 HTML</p>
+<p style="margin:0 0 16px;line-height:1.75;font-size:16px;color:#333;">三端稿子写在 <code>platforms/</code> 下，生成一次就归你，手改过的内容不会被下一次生成覆盖。</p>
+<h2 style="font-size:18px;font-weight:600;margin:30px 0 14px;padding-left:10px;border-left:3px solid #333;line-height:1.5;">支持的写法</h2>
+<p style="margin:0 0 16px;line-height:1.75;font-size:16px;color:#333;">• 二级标题：小红书里变成【小标题】，公众号里变成带左边框的标题块</p>
+<p style="margin:0 0 16px;line-height:1.75;font-size:16px;color:#333;">• 列表：小红书里变成圆点，公众号里变成不带项目符号的独立段落</p>
+<p style="margin:0 0 16px;line-height:1.75;font-size:16px;color:#333;">• 引用：小红书里用 <code>「」</code> 包起来</p>
+<p style="margin:0 0 16px;line-height:1.75;font-size:16px;color:#333;">• 正文里的图片：生成时换成绝对路径，发公众号时先传到微信图床</p>
+<h2 style="font-size:18px;font-weight:600;margin:30px 0 14px;padding-left:10px;border-left:3px solid #333;line-height:1.5;">发布之后</h2>
+<p style="margin:0 0 16px;line-height:1.75;font-size:16px;color:#333;">状态记在 <code>meta.json</code>：<code>empty</code> → <code>ready</code> → <code>publishing</code> → <code>published</code>。小红书如果在跳转那一步超时，会停在 <code>unknown</code> 而不是 <code>failed</code>——笔记可能已经发出去了，重发之前先去主页看一眼。</p>

@@ -145,7 +145,13 @@ const server = http.createServer(async (req, res) => {
   try {
     if (p === '/api/state') {
       const contents = slugList().map(summarize).filter(Boolean)
-      return json(res, 200, { contents, config: { port: config.port, author: config.author, cosmosDir: config.cosmosDir, xhsBaseUrl: config.xhsBaseUrl } })
+      const mode = config.vaultDir && fs.existsSync(config.vaultDir) ? 'vault' : 'content'
+      return json(res, 200, {
+        mode,
+        source: mode === 'vault' ? config.vaultDir : path.join(ROOT, 'content'),
+        contents,
+        config: { port: config.port, author: config.author, cosmosDir: config.cosmosDir, xhsBaseUrl: config.xhsBaseUrl },
+      })
     }
 
     if (p.startsWith('/api/content/') && req.method === 'GET') {

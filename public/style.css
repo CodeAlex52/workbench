@@ -75,6 +75,21 @@ body {
   letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--dimmer);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.source {
+  font: 9.5px/1 var(--mono);
+  color: #4a4a52;
+  text-transform: none;
+  letter-spacing: 0;
+  max-width: 156px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .list { flex: 1; overflow-y: auto; padding: 0 8px 8px; }

@@ -1,0 +1,12 @@
+{
+  "title": "示例：一份 md 怎么发三个地方",
+  "content": "【这份文件是三端共用的源】\n\n工作台不存内容，内容就是你磁盘上的 Markdown。它只负责把同一份稿子翻译成三种形态：\n\n· 博客要的是带 frontmatter 的 md\n\n· 小红书要的是 20 字以内标题 + 1000 字以内纯文本 + 话题\n\n· 公众号要的是能过编辑器校验的内联样式 HTML\n\n三端稿子写在 platforms/ 下，生成一次就归你，手改过的内容不会被下一次生成覆盖。\n\n【支持的写法】\n\n· 二级标题：小红书里变成【小标题】，公众号里变成带左边框的标题块\n\n· 列表：小红书里变成圆点，公众号里变成不带项目符号的独立段落\n\n· 引用：小红书里用 「」 包起来\n\n· 正文里的图片：生成时换成绝对路径，发公众号时先传到微信图床\n\n【发布之后】\n\n状态记在 meta.json：empty → ready → publishing → published。小红书如果在跳转那一步超时，会停在 unknown 而不是 failed——笔记可能已经发出去了，重发之前先去主页看一眼。",
+  "tags": [
+    "示例",
+    "工作台",
+    "说明"
+  ],
+  "images": [
+    "~/Desktop/vibecoding/workbench/content/example/assets/cover.png"
+  ]
+}

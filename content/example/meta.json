@@ -1,0 +1,27 @@
+{
+  "slug": "example",
+  "title": "示例：一份 md 怎么发三个地方",
+  "description": "工作台的示例内容。改掉这段文字、换掉封面，就能直接发出去。",
+  "tags": [
+    "示例",
+    "工作台"
+  ],
+  "category": "说明",
+  "createdAt": "2026-11-21T08:22:17.771Z",
+  "platforms": {
+    "blog": {
+      "status": "ready",
+      "lastPublishedHash": null
+    },
+    "xhs": {
+      "status": "ready",
+      "lastPublishedHash": null
+    },
+    "wechat": {
+      "status": "ready",
+      "lastPublishedHash": null
+    }
+  },
+  "updatedAt": "2026-11-21T08:22:17.774Z",
+  "sourceHash": "d0533fb1b6425d05"
+}

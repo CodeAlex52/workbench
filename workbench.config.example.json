@@ -1,0 +1,9 @@
+{
+  "port": 7788,
+  "author": "",
+  "cosmosDir": "../blog/cosmos",
+  "xhsBaseUrl": "http://localhost:18060",
+  "xhsToken": "",
+  "vaultDir": "",
+  "wechatProfileDir": ".wechat-profile"
+}

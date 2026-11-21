@@ -165,7 +165,9 @@ $('#cards').addEventListener('click', async (e) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rebuild: btn.textContent === '重生成' }),
       })
-      setLogString(`生成 ${r.written.join(', ') || '（无变化）'}\n跳过 ${r.skipped.join(', ') || '（无）'}`)
+      const lines = [`生成 ${r.written.join(', ') || '（无变化）'}`, `跳过 ${r.skipped.join(', ') || '（无）'}`]
+      for (const e of r.errors || []) lines.push(`! ${e}`)
+      setLogString(lines.join('\n'))
       await open(slug)
     } catch (err) {
       setLogString(`✗ ${err.message}`)

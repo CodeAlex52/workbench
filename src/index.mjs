@@ -15,6 +15,7 @@ if (cmd === 'serve') {
   for (const slug of slugs) {
     const r = buildContent(slug, { rebuild: flag('rebuild') })
     console.log(`${slug}: 生成 ${r.written.join(',') || '无'} · 跳过 ${r.skipped.join(',') || '无'} · 封面 ${r.hasCover ? '有' : '无'}`)
+    for (const e of r.errors || []) console.log(`  ! ${e}`)
   }
 } else if (cmd === 'new') {
   const slug = positional[0]

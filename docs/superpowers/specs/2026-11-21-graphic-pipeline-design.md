@@ -55,6 +55,38 @@
 
 ## 四、看过的现成轮子，以及为什么不直接用
 
+### 4.1 第二轮检索：同类项目其实不少
+
+第一版这份文档只找了 4 个项目就收了，是漏的。按「创作工作台 / publishing workbench / 多平台分发」重新检索后，看到一个更完整的图景——包括一个名字就叫「个人内容创作工作台」的项目。下表是按「它到底能不能干我们这三件事」读源码核过一遍的结果：
+
+| 项目 | 星 / 许可 | 小红书 | 公众号 | 自有静态博客 |
+|---|---|---|---|---|
+| [ehomekevin/personal-ip-workbench-open-source](https://github.com/ehomekevin/personal-ip-workbench-open-source)「创作有数」 | 57 · MIT | 适配器目录存在，但 `PUBLISHING_ROUTES` 只有 `x_v2`/`wechat_official`/`douyin_open`，**未接通** | 官方 API + SSH 中继绕 IP 白名单；`48001` 直接判认证失败 | ✗（`personal_site` 是只读采集） |
+| [yupeng0512/ai-auto-publisher](https://github.com/yupeng0512/ai-auto-publisher) | MIT · Python | Playwright，6 平台共 282 行，骨架级 | 官方 API，可选 `draft_only` | ✗ |
+| [gitcoffee-os/postbot](https://github.com/gitcoffee-os/postbot) | 1703 · Apache-2.0 | 有 publisher 实现 | `weixin.publisher.ts` | ✗ |
+| [chstor/MultiPub](https://github.com/chstor/MultiPub) | — | Playwright 真发布 | Playwright 真发布 | ✗ |
+| [wechatsync/Wechatsync](https://github.com/wechatsync/Wechatsync) | 6652 · GPL-3.0 | 有（直调平台内部接口） | 有（直调平台内部接口） | ✗ |
+| [Tom-wc/FanPost](https://github.com/Tom-wc/FanPost) | 2 | 界面开源 | 走接口，但**发布模块闭源** | ✗ |
+| [LDJ-creat/MediaManager](https://github.com/LDJ-creat/MediaManager) | 33 | 有 | 有 | ✗ |
+| [mguozhen/multi-platform-publisher](https://github.com/mguozhen/multi-platform-publisher) | 10 · MIT | 有，13 平台 | 有 | ✗ |
+| [amlei/tassello](https://github.com/amlei/tassello)（九漾 Onda） | 2 | 有 | 有 | ✗ |
+
+「✗」不是查漏，是通读发布层后的判断：这些项目面向的是 SaaS 平台和国内内容平台，**没有一个把「我自己的 Astro / git 静态站」当作发布目标**。
+
+### 4.2 为什么有这么多轮子，还是不能直接用
+
+三条原因，前两条是客观的墙，第三条是成本：
+
+1. **公众号**。凡是认真做的项目，发布层一律只走官方 API（合规、可验证、能查状态）。而官方 API 对个人订阅号返回 `48001`，这堵墙对所有项目一样高。最说明问题的是「创作有数」：它为绕开 IP 白名单专门实现了 `ssh-relay.ts` + `proxy-network.ts`（固定出口 IP），工程量不小，但 `channel.ts:113` 依然把 `48001` 归为 `WechatMpError('authentication')`。少数走 Playwright 的项目，要么依赖常驻浏览器扩展（postbot、Wechatsync），要么把发布模块闭源（FanPost）。
+2. **博客**。17 个相关项目里没有一个支持 Astro / git 静态站。这个场景在国内创作者工具里是长尾中的长尾——它恰好是我们最独特的部分，所以没人会替我们做。
+3. **内容模型**。它们用 SQLite 或自有 IR 当事实源；我们的事实源是 md 文件 + Astro content collection。接入它们要先做一次格式迁移，再在中间件上打补丁——成本高于直接写适配器。
+
+### 4.3 关于「接了微信 IM 的工作台」
+
+这类确实存在，而且很火：[LangBot](https://github.com/langbot-app/LangBot)（19k stars）、[AstrBot](https://github.com/AstrBotDevs/AstrBot)（44k stars）、`chatgpt-on-wechat` 的 `channel/wechatmp`。但它们用的是公众号的**消息接口**（别人发消息、机器人被动回复），不是**发布接口**。这两套权限在微信侧完全独立：个人订阅号现在能用消息接口（被动回复，5 秒超时、最多重试 2 次），仍然用不了发布接口。看到「公众号 + 微信 IM 工作台」时，需要先分清是哪一种。
+
+### 4.4 第一轮找到的（细节保留）
+
 | 项目 | 是什么 | 结论 |
 |---|---|---|
 | [amlei/tassello](https://github.com/amlei/tassello)（九漾 Onda） | 中文创作者多平台发布工作台。Markdown 事实源 + `state/` 文件状态库 + Bun/Elysia 本机后端 + Next.js UI + Electron + Chrome MV3 扩展 + Native Messaging + Obsidian 插件 + CLI。支持 wechat/xhs/zhihu/baijiahao 等。 | 最接近，但 2 stars、2026-09 才建、五端应用。fork 等于接手别人的架构。**借鉴其四个决定**：Markdown+frontmatter 作事实源、文件状态库而非数据库、发布停在 `awaiting_confirm`、CLI 语法 `publish <platform> <type> <file>`。 |
@@ -64,7 +96,11 @@
 | [xiaohongshu-mcp](https://github.com/xpzouying/xiaohongshu-mcp) | 已在用的 Go 服务 + REST/MCP。 | 保留，作为小红书的执行端。 |
 | Postiz / Mixpost / TryPost | 海外自托管调度器，覆盖 X/LinkedIn/Mastodon 等。 | 不适用：不支持小红书/公众号，且要求各平台开发者应用审核。 |
 
-结论：**不 fork 任何一个，写一个薄壳**。上面的项目当参考实现和未来的适配器来源；薄壳的价值在于"内容格式和状态是本机的、可读的、git 可管的"。
+结论：**不 fork 任何一个，写一个薄壳**。上面的项目当参考实现和未来的适配器来源；薄壳的价值在于「内容格式和状态是本机的、可读的、git 可管的」。
+
+但要诚实地说清自研边界，别把「没人做过」当成理由——真正自研的只有三块：**内容台（md 即事实源 + 平台稿派生）**、**博客适配器（写 cosmos + 构建部署）**、**公众号填草稿（Playwright）**。小红书继续用已经在跑的 `xiaohongshu-mcp`；以后要加知乎 / 掘金 / CSDN，直接接 `ai-auto-publisher` 或 `Wechatsync`，不要自己再写一遍平台适配。
+
+反过来，如果哪天诉求变了——不再需要自己的博客、只要「多发几个平台」——那「创作有数」或 `ai-auto-publisher` 是比自己写更值的选择，可以直接拿来用。这份文档的取舍只在「md 文件是自己的事实源 + 博客是发布目标」这个前提下成立。
 
 ## 五、方案
 

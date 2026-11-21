@@ -1,0 +1,15 @@
+{
+  "name": "workbench",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "个人内容工作台：一份 md，发博客 / 小红书 / 公众号",
+  "scripts": {
+    "serve": "node src/index.mjs serve",
+    "build": "node src/index.mjs build",
+    "publish": "node src/index.mjs publish"
+  },
+  "dependencies": {
+    "playwright-core": "^1.65.1"
+  }
+}

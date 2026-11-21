@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import {
-  ROOT, loadConfig, slugList, readSource, readMeta, writeMeta, readDraft, sha, summarize, contentDir,
+  ROOT, loadConfig, slugList, readSource, readMeta, writeMeta, readDraft, sha, summarize, contentDir, appendOutput,
 } from './lib/store.mjs'
 import { buildContent } from './build.mjs'
 import { publishBlog } from './publishers/blog.mjs'
@@ -34,6 +34,23 @@ function enqueue(job, task) {
       job.status = 'failed'
       job.error = String(e?.message || e)
       job.logs.push(`✗ ${job.error}`)
+      // 失败也要落盘，否则内容会永远卡在 publishing
+      if (!e?.rejected && job.kind === 'publish' && job.slug && job.portal) {
+        try {
+          const m = readMeta(job.slug)
+          if (m?.platforms?.[job.portal]) {
+            m.platforms[job.portal] = {
+              ...m.platforms[job.portal],
+              status: 'failed',
+              error: job.error.slice(0, 300),
+              failedAt: now(),
+              pendingHash: null,
+            }
+            m.updatedAt = now()
+            writeMeta(job.slug, m)
+          }
+        } catch {}
+      }
     } finally {
       job.finishedAt = now()
     }
@@ -57,19 +74,36 @@ async function publish(slug, portal, opts = {}, log) {
   meta.platforms[portal] ??= { status: 'empty', lastPublishedHash: null }
   const viewUrl = `https://mp.weixin.qq.com/s/${slug}`
   let patch = {}
+  let evidence = null
 
   if (portal === 'blog') {
+    const blogDraft = readDraft(slug, 'blog')
     meta.platforms.blog.status = 'publishing'
     writeMeta(slug, meta)
     const r = await publishBlog({ slug, config, log })
-    patch = { status: 'published', publishedAt: now(), url: r.url, dirty: r.dirty }
+    evidence = r
+    patch = {
+      status: 'published',
+      publishedAt: now(),
+      url: r.url,
+      dirty: r.dirty,
+      lastPublishedHash: sha(blogDraft?.raw || ''),
+    }
   } else if (portal === 'xhs') {
     const draft = readDraft(slug, 'xhs')
     const hash = sha(draft?.raw || '')
+    const prev = meta.platforms.xhs || {}
+    // 幂等判断必须抢在把 status 改成 publishing 之前，否则判断永远不成立
+    if (!opts.force && prev.status === 'published' && prev.lastPublishedHash === hash) {
+      const e = new Error('这篇已经发过且内容没变，要重发请用「强制重发」')
+      e.rejected = true
+      throw e
+    }
     meta.platforms.xhs.status = 'publishing'
     meta.platforms.xhs.pendingHash = hash
     writeMeta(slug, meta)
     const r = await publishXhs({ slug, meta, config, force: opts.force, log })
+    evidence = r.result
     patch = { status: 'published', publishedAt: now(), lastPublishedHash: r.hash, url: r.noteUrl, pendingHash: null }
   } else if (portal === 'wechat') {
     const draft = readDraft(slug, 'wechat')
@@ -97,6 +131,7 @@ async function publish(slug, portal, opts = {}, log) {
     throw new Error(`未知平台 ${portal}`)
   }
 
+  appendOutput(slug, portal, { at: now(), result: evidence, patch })
   const fresh = readMeta(slug)
   fresh.platforms[portal] = { ...fresh.platforms[portal], ...patch }
   fresh.updatedAt = now()

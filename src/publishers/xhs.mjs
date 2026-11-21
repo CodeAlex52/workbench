@@ -54,7 +54,7 @@ export async function publishXhs({ slug, meta, config, force = false, log = () =
   const hash = sha(draft.raw)
   const st = meta.platforms?.xhs || {}
 
-  if (!force && st.status === 'published' && st.lastPublishedHash === hash) {
+  if (!force && st.status !== 'failed' && st.lastPublishedHash === hash) {
     throw new Error('这篇小红书已经发过且内容没变。要重发请用「强制重发」')
   }
   if (!payload.images?.length) throw new Error('小红书必须有封面图')
@@ -73,6 +73,7 @@ export async function publishXhs({ slug, meta, config, force = false, log = () =
     tags: payload.tags || [],
   })
   if (res.success === false) throw new Error(res.error || '小红书返回失败')
+  log(`发布完成${res.status ? '：' + res.status : ''}`)
 
   return { hash, result: res, noteUrl: res.note_url || res.data?.note_url || null }
 }

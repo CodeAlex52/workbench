@@ -33,6 +33,7 @@
 - 数据回流（阅读量、点赞、评论、D+1/D+7 复盘）。
 - 多账号、多用户、权限。
 - 手机访问。
+- 已发布内容的版本管理（改稿历史、回滚、多版本草稿）。改稿走 `--force` 重新发布，不建版本库。
 
 **反目标（技术上做成了也算失败）**
 
@@ -48,7 +49,7 @@
 | 公众号主体 | 个人订阅号。2025-07 起官方回收发布类接口权限；未认证号调 `draft/add` 返回 `48001 api unauthorized`；服务端 API 还要 IP 白名单（`40164`）。**官方 API 这条路对本号不存在。** |
 | 公众号可行路径 | 浏览器自动化，复用登录态，把内容填进草稿箱。登录态会过期，需要重扫码。 |
 | 小红书 | `~/work/xiaohongshu-mcp`，端口 `18060`。`GET /health` 公开；`/api/v1/*` 走可选 Bearer（`--token` 或 `AUTH_TOKEN`，为空时放行）。`POST /api/v1/publish`，body `{title, content, tags, images[]}`。另有 `/api/v1/login/status`、`/api/v1/login/qrcode`。 |
-| 博客 | `blog/cosmos`，Astro 5 + Cloudflare Workers，remote `github.com/CodeAlex52/cosmos`，**没有 CI**。部署 = `npm run build && npx wrangler deploy`。内容在 `src/content/posts/*.md`，frontmatter 要求 `title`、`published`，可选 `description/tags/category/image/slug`。 |
+| 博客 | `blog/cosmos`，Astro 5 + Cloudflare Workers，remote `github.com/CodeAlex52/cosmos`，**没有 CI**。部署 = `npm run build && npx wrangler deploy`，`wrangler.jsonc` 里 `name: cosmos`、`assets.directory: ./dist`，整站一起发。内容在 `src/content/posts/*.md`；`src/content.config.ts:6-16` 只认 `title`、`published`（必填）与 `description/tags/category/image`（可选）；`slug`、`pinned` 是惰性字段，URL 由 `src/pages/posts/[...slug].astro:10-12` 从文件名生成。 |
 | 运行环境 | macOS，Node v22.23.4，Playwright 1.65.1 已装（chromium 已缓存）。 |
 | 既有资产 | `blog/board`（Worker + D1 打卡板）、`~/.claude/agents/xhs-account-ops`（内容运营数据模型 + dashboard.html）、`xhs-note` / `xhs-layout` 封面生成 skill。 |
 
@@ -110,7 +111,7 @@ workbench/
         xhs.json              # {title, content, tags, images[]}
         wechat.html           # 内联样式
   output/
-    <slug>/<platform>-<hash>.json   # 每次发布的原始返回，append-only
+    <slug>/<platform>-<hash>.json   # 每次发布的原始返回，append-only（git 忽略，不作记忆）
   .wechat-profile/            # Playwright 持久化登录态（git 忽略）
   workbench.config.json       # 路径与端口
 ```
@@ -128,6 +129,8 @@ workbench/
 }
 ```
 
+**归属（已确认）**：`workbench/content/<slug>/source.md` 是人和工作台唯一改的地方；`cosmos/src/content/posts/<slug>.md` 是**产物**，`wb publish <slug> blog` 直接覆盖它。`wb new --from` 是「导入并接管」：导入后那篇的正文只在 workbench 侧编辑，不再回 cosmos 里改。为避免误覆盖，博客适配器写盘前比对目标文件与 `lastPublishedHash`，不一致（说明有人在 cosmos 里手改过）时明确提示再写，不静默吞掉。
+
 `meta.json`：
 
 ```json
@@ -136,8 +139,8 @@ workbench/
   "title": "看了一年的 Victorio",
   "createdAt": "2026-11-21T15:00:00+08:00",
   "platforms": {
-    "blog":   { "status": "published", "url": "https://cosmos.../posts/victorio/", "updatedAt": "..." },
-    "xhs":    { "status": "published", "noteId": "", "url": "", "updatedAt": "..." },
+    "blog":   { "status": "published", "url": "https://cosmos.../posts/victorio/", "lastPublishedHash": "...", "updatedAt": "..." },
+    "xhs":    { "status": "published", "noteId": "", "url": "", "lastPublishedHash": "...", "updatedAt": "..." },
     "wechat": { "status": "awaiting_confirm", "draftId": "", "updatedAt": "..." }
   },
   "events": [
@@ -151,17 +154,23 @@ workbench/
 ```
 empty --build--> ready --publish--> publishing --+--> published
                                                  +--> awaiting_confirm（公众号：草稿填好，等人点发表）
+                                                 +--> unknown（可能已发出，见 6.5）
                                                  +--> failed(原因)
 published --force--> publishing
+unknown --confirm--> published | failed
 ```
 
 - 只有 `ready` 能发布；`published` 再点必须显式 `--force`。
 - `failed` 可重试，重试前保留上一条 `lastError`。
-- 公众号 `awaiting_confirm` 是终态之一，面板上给"我已发表"按钮回填 URL。
+- `unknown` **不允许直接重试**，必须 `wb confirm <slug> xhs --url <笔记链接>` 或 `--failed` 收尾；面板上黄灯 + 两个按钮。
+- 公众号 `awaiting_confirm` 是终态之一，面板上给「我已发表」按钮回填 URL。
+- 小红书 `ready` 的前提是 `assets/` 里至少有一张图（MCP 空图会硬失败 `图片不能为空`），`wb build` 就拦住，不放行到 `ready`。
 
 ### 6.3 执行器与面板
 
 - 服务只管三件事：读目录出队列、执行动作、把日志用 SSE 推给前端。
+- 只监听 `127.0.0.1`，`POST` 校验 `Origin`/`Host`：否则你随便打开的任何网页都能向 `localhost:7788` 发请求、用你的小红书发内容。
+- 小红书一次发布是**分钟级**的浏览器任务（单页超时 300s，每张图上传等 60s，见 `xiaohongshu/publish.go:114,303-307`），所以 HTTP 接口不等结果：立刻返回 `202`，进度和结果走 SSE。
 - 动作串行（一个队列，一把锁），因为三个平台共用本机浏览器和 MCP。
 - 每个动作落 `output/` 的原始返回 + `meta.json` 的 `events`，面板刷新靠读文件，不靠内存状态。
 - 面板路由：`GET /` 队列、`GET /api/items`、`POST /api/items/:slug/publish/:platform`、`GET /api/logs`（SSE）。
@@ -169,9 +178,15 @@ published --force--> publishing
 
 ### 6.4 三个适配器
 
-**blog**：`platforms/blog.md` → `cosmos/src/content/posts/<slug>.md`；`assets/*` → `cosmos/public/images/`；`cd cosmos && npm run build && npx wrangler deploy`；从输出里解析 `https://...workers.dev` 回填。构建失败时把 stderr 尾部写进 `lastError`，状态置 `failed`。
+**blog**：`platforms/blog.md` → `cosmos/src/content/posts/<slug>.md`（覆盖，写前比 hash）；`assets/*` → `cosmos/public/images/`；`cd cosmos && npm run build && npx wrangler deploy`；从输出里解析 `https://...workers.dev` 回填。构建失败时把 stderr 尾部写进 `lastError`，状态置 `failed`。
 
-**xhs**：先 `GET /health`，再 `GET /api/v1/login/status`；未登录返回二维码路径让人扫。发布前算 `hash(platforms/xhs.json)`，跟 `output/` 里已成功的 hash 比对，命中就拒绝（除非 `--force`）。请求 `POST /api/v1/publish`，`images` 传绝对路径。成功写 `published`，失败把后端 `message` 原样落盘。
+**发布范围（已确认）**：`wrangler deploy` 发的是 cosmos **当前工作树**，跟手动跑命令一致。不发 `HEAD`、不开临时 worktree、不要求干净。面板上把 cosmos 的 `git status`（多少未提交改动、多少未推送 commit）显示成黄字提醒，不阻断。
+
+**xhs**：先 `GET /health`，再 `GET /api/v1/login/status`；未登录返回二维码路径让人扫。发布前算 `hash(platforms/xhs.json)`，跟 `meta.json` 的 `lastPublishedHash` 比对，命中就拒绝（除非 `--force`）。请求 `POST /api/v1/publish`，`images` 传绝对路径。
+
+**`xhs.json` 是 additive 的（已确认）**：`wb build` 只在它不存在时生成骨架，已存在就原样保留、不覆盖；要重新派生加 `--rebuild-xhs`。原因是小红书文案会手改，每次重生成既毁掉手写文案，又会让 hash 变化、把「已发布」守卫静默缴械。hash 在 publish 成功那一刻锁进 `meta.json`。
+
+`PublishResponse` 只有 `{title, content, images, at_users}`（`~/work/xiaohongshu-mcp/service.go:59-67`），**不返回笔记 id**。`noteId`/`url` 靠 `GET /api/v1/feeds/list`（`routes.go:56`）按标题和时间反查，best-effort，查不到就留空，不影响 `published`。
 
 **wechat**：Playwright `launchPersistentContext(config.wechatProfileDir, { headless: false })` → `https://mp.weixin.qq.com/`。未登录就停住，让人扫码，扫完继续。已登录则：新建图文 → 填标题 → 正文注入 `platforms/wechat.html`（优先 `page.evaluate` 派发带 `text/html` 的 paste 事件，失败则回退到逐段 `insertHTML`）→ 上传封面 → 点「保存」→ 等保存成功提示 → 回填草稿链接 → **不点发表**。选择器全部集中在 `wechat.mjs` 顶部的 `SEL` 常量里，微信改版只改一处。
 
@@ -179,10 +194,13 @@ published --force--> publishing
 
 这是整套东西里最不能出错的地方（小红书重复发布是真事故）。
 
-- 每次发布前算内容 hash，成功记录写进 `output/<slug>/`，文件名含 hash。
-- `meta.json` 里 `published` 且 hash 未变 → 直接拒绝，提示"这篇已经发过了，要重发加 --force"。
-- 面板上"发布"按钮对 `published` 的项要长按/二次确认。
-- 小红书同一进程内不允许并发发布（全局单飞锁）。
+- 每次发布前算内容 hash，**成功记录写进 `meta.json` 的 `platforms.<p>.lastPublishedHash`**（`output/` 被 git 忽略且是 append-only 日志，不能当记忆）。
+- `published` 且 hash 未变 → 直接拒绝，提示「这篇已经发过了，要重发加 --force」。
+- `unknown` 一律当已发出处理，必须人确认才能再动。
+- 面板上「发布」按钮对 `published` 的项要二次确认。
+- 跨进程锁：`content/.lock-<platform>` 文件锁。CLI 和面板是并列入口，两个终端同时点小红书是真能重发的。
+
+小红书 MCP 的成功判定是「点发布后 15s 内离开 `/publish/publish` 页面」，否则报 `发布未确认成功：点击发布后未跳转离开发布页（可能校验未过或被拦截）`（`~/work/xiaohongshu-mcp/xiaohongshu/publish.go:459-478`）。这条**不映射成 `failed`，映射成 `unknown`**：笔记可能已经发出去了。
 
 ### 6.6 配置与密钥
 
@@ -198,7 +216,10 @@ published --force--> publishing
 4. **博客用 `wrangler deploy` 同步部署**，不走 git push。因为 cosmos 没有 CI，同步部署能立刻拿到成败和 URL；git commit 由你决定什么时候做（工作台不自动 commit）。
 5. **一稿一目录，slug 即目录名**。slug 冲突时加日期后缀，不覆盖。
 6. **不引入数据库**。文件够用，且可 git。
-7. **不做 AI 改写**。`wb build` 只做机械派生：博客就是源稿加 frontmatter，公众号是源稿的排版版，小红书是把源稿里已有的短段落拼成 JSON（可手改）。改写留给现有 skill，下一版再谈怎么接。
+7. **`unknown` 是正式状态**，不是错误分支。宁可多一次人工确认，也不要多一次重复发布。
+8. **一次发布一把锁、一个串行队列**，不为并发优化。三个平台共用本机浏览器和 MCP，并发只会互相抢会话。
+9. **不做 AI 改写**。`wb build` 只做机械派生：博客就是源稿加 frontmatter，公众号是源稿的排版版，小红书首版是从源稿短段落拼出来的骨架（之后手改，不被覆盖）。改写留给现有 skill，下一版再谈怎么接。
+10. **build 是「补齐」而不是「重刷」**：产物文件已存在就跳过（xhs.json 尤其），`--rebuild` 才强制重写。误覆盖比产物过时危险得多。
 
 ## 八、留给 builder / 下一版
 
@@ -218,8 +239,10 @@ published --force--> publishing
 3. `wb publish victorio blog` → `cosmos.example.workers.dev` 上能打开这篇，状态 `published` + URL。
 4. `wb publish victorio xhs` → 小红书出现笔记；**再跑一次必须被拒绝**。
 5. `wb publish victorio wechat` → 后台草稿箱有草稿，人点发表后 `wb confirm victorio wechat --url ...`。
-6. `wb serve` → 面板上三个状态跟 `meta.json` 一致，点按钮能触发同一个动作，日志实时滚。
+6. `wb serve` → 面板上三个状态跟 `meta.json` 一致，点按钮能触发同一个动作，日志实时滚；动作立刻返回、不卡住（小红书那步是分钟级）。
 7. 断网/关掉 18060/wrangler 未登录三种情况下，面板显示明确的阻塞原因，而不是转圈。
+8. 另开一个网页执行 `fetch('http://localhost:7788/api/items/x/publish/xhs',{method:'POST'})` 必须被拒（Origin 校验）。
+9. 杀掉守护进程重启后，`published` 状态和 hash 还在（证明记忆在 `meta.json` 而不是内存）。
 
 ## 十、风险
 

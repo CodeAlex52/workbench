@@ -139,6 +139,8 @@ export function toXhs(blocks, meta) {
 /** 博客：直接把 frontmatter + 正文原样交给 cosmos，只统一 slug 与标题 */
 export function toBlog(frontmatter, body, meta) {
   const fm = { ...frontmatter }
+  delete fm.workbench
+  delete fm.cover
   fm.title = meta.title || fm.title
   fm.slug = meta.slug
   fm.description = fm.description || meta.description || ''

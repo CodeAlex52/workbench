@@ -85,7 +85,7 @@ workbench: true
 ---
 ```
 
-只有标了 `workbench: true` 的笔记会进列表，其它笔记不会被读到产物目录里去。产物和状态写在 `vault/.workbench/<slug>/`，源笔记本身不动。
+只有标了 `workbench: true` 的笔记会进列表，其它笔记不会被读到。产物和状态写在 `vault/产出/<slug>/`，源笔记本身不动。这个目录**故意放在 vault 里**，你在 Obsidian 侧边栏能直接看到生成的博客稿、小红书文案和公众号 HTML；扫描时会跳过它，所以产物不会被误当成新笔记。
 
 不配置 `vaultDir` 时，退回读仓库里的 `content/<slug>/source.md`。
 

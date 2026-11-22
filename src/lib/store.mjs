@@ -63,7 +63,7 @@ function scanVault(vault) {
       return
     }
     for (const e of entries) {
-      if (e.name.startsWith('.') || e.name === 'node_modules') continue
+      if (e.name.startsWith('.') || e.name === 'node_modules' || e.name === '产出') continue
       const p = path.join(dir, e.name)
       if (e.isDirectory()) {
         walk(p, depth + 1)
@@ -78,7 +78,7 @@ function scanVault(vault) {
       }
       if (!isTrue(fm.workbench)) continue
       const slug = String(fm.slug || e.name.replace(/\.md$/, ''))
-      out.set(slug, { slug, sourcePath: p, dir: path.join(vault, '.workbench', slug), mode: 'vault' })
+      out.set(slug, { slug, sourcePath: p, dir: path.join(vault, '产出', slug), mode: 'vault' })
     }
   }
   walk(vault, 0)

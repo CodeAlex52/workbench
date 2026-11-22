@@ -184,6 +184,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         mode,
         source: mode === 'vault' ? config.vaultDir : path.join(ROOT, 'content'),
+        vaultName: mode === 'vault' ? path.basename(config.vaultDir) : null,
         contents,
         config: { port: config.port, author: config.author, cosmosDir: config.cosmosDir, xhsBaseUrl: config.xhsBaseUrl },
       })

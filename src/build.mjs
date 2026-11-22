@@ -1,4 +1,5 @@
 import path from 'node:path'
+import fs from 'node:fs'
 import { parseFrontmatter, parseBlocks, toWechatHtml, toXhs, toBlog } from './lib/markdown.mjs'
 import { paths, readSource, readMeta, writeMeta, writeDraft, readDraft, sha, findCover } from './lib/store.mjs'
 
@@ -29,6 +30,9 @@ export function buildContent(slug, { rebuild = false } = {}) {
       if (!cover) throw new Error('缺封面：在笔记目录放 cover.png，或用 frontmatter 的 cover 字段指定')
       const xhs = toXhs(blocks, { ...fm, ...meta })
       writeDraft(slug, 'xhs', JSON.stringify({ ...xhs, images: [cover] }, null, 2))
+      // 同时落一份人读版，方便在 Obsidian 里直接看
+      const readable = [`# ${xhs.title}`, '', xhs.content, '', (xhs.tags || []).map((t) => `#${t}`).join(' ')].join('\n')
+      fs.writeFileSync(path.join(paths(slug).platforms, 'xhs.md'), readable)
       written.push('xhs')
     } catch (e) {
       errors.push(`小红书：${e.message}`)

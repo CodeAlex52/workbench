@@ -93,6 +93,15 @@ function previewFor(portal) {
 
 function renderDetail() {
   const { summary, meta } = current
+  const ob = $('#openObsidian')
+  if (ob) {
+    if (state?.vaultName && summary?.slug) {
+      ob.href = `obsidian://open?vault=${encodeURIComponent(state.vaultName)}&file=${encodeURIComponent(summary.slug)}`
+      ob.hidden = false
+    } else {
+      ob.hidden = true
+    }
+  }
   $('#title').textContent = summary.title
   $('#desc').textContent = summary.description || '还没有描述'
   const seen = new Set()
